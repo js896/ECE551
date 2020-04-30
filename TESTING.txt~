@@ -1,0 +1,556 @@
+I wrote a testing program called "testprint" which prints out the value of argc(with \n at the end of it) and the command line arguments (excluding argv[0], with \n at the end of each) we input when running it.
+
+STEP 1: Read a command name and run it
+
+Run:
+(1) valgrind ./ffosh
+
+    This command starts ffosh.
+
+(2) /bin/ls
+
+    You will see that it lists all files and directories of current directory which is correct.
+
+    This is correct because it just uses ls under the directory /bin.
+
+(3) /bin/ls ..
+
+    You will see that it lists all files and directories of current directory's parent directory, which is correct.
+
+    This is correct because it just uses ls under the directory /bin.
+
+(4) ./testprint Eretz Tzion v'Yerushalayim
+
+    You will see that it prints:
+    4
+    Eretz
+    Tzion
+    v'Yerushalayim
+
+    which is exactly what we are expecting.
+    
+(5) /bin/echo a
+
+    You will see my shell gives:
+    a
+    Program was successful
+
+    This is correct because it uses the echo under /bin.    
+(6) ./not
+
+    You will see my shell gives:
+    Program failed with code 1
+    
+    Then it prints the prompt again, which is correct, because there is no file called "not" in the current directory, and when the command failed we are supposed to show the exit status of the program and print the prompt again.
+
+(7) The followings are to test the behaviour of my shell:
+
+    Hit the key RET, you will see the shell does nothing and shows the prompt again, which is correct because this is what we would expect for a real UNIX command shell.
+    
+    Hit the keys Ctrl + D, which is EOF, makes ffosh exit, you can see there is no memory leak, it is correct because we are requird to do so.
+
+
+STEP 2: Improving commands
+
+According to my design, unclosed quotation mark means there exists non-literal quotation mark that is not paired with another non-literal quoatation mark.
+
+Run valgrind ./ffosh
+This starts my shell again.
+
+Run:
+(1) ls /home/js896/ece551
+
+    You will see it shows all files and directories of the specified directory which is correct because it searches for the command "ls" in ECE551PATH and finds it under /bin.
+    
+(2) pwd
+
+    You will see it shows the current working directory which is correct because the command is under the directory /bin.
+    
+(3) notacommand
+
+    You will see my shell says:
+    Command notacommand not found
+    Program failed with code 1
+    
+    It is correct because there is no command called notacommand under the directories of ECE551PATH.
+    
+(4) ./testprint a    b  f
+
+    You will see my shell shows:
+    4
+    a
+    b
+    f
+    
+    which is correct because my shell is supposed to skip arbitrary amout of whitespace between arguments.
+    
+(5) ./testprint "a   b"   c       "def   ghi"
+
+    You will see my program shows:
+    4
+    a   b
+    c
+    def   ghi
+    
+    which is correct because we are supposed to use "s to include literal whitespace.
+
+(6) ./testprint "\"hello world\""   "a\\b\\c d\\"
+
+    You will see my program shows:
+    3
+    "hello world"
+    a\b\c d\
+    
+    which is correct because we are supposed to support escaped quotation marks and backslashes to allow the user to write a literal quotation mark and backslashes.
+    
+(7) ./testprint "\"hello world\""   "a\\b\\c
+
+    You will see my shell shows:
+    unclosed quotation mark
+    
+    And then it shows the prompt again, which is correct because it is an error to have an unclosed quotation mark at the end of the command line.
+    
+(8) ./testprint "\"hello world\"
+
+    You will see my shell shows:
+    unclosed quotation mark
+    
+    And then it shows the prompt again, which is correct because it is an error to have an unclosed quotation mark at the end of the command line.
+    
+(9) ./testprint "\"hello
+
+    You will see my shell shows:
+    unclosed quotation mark
+    
+    And then it shows the prompt again, this is correct because it is an error to have an unclosed quotation mark at the end of the command line.
+    
+(10) ./testprint a\"
+
+     You will see my shell shows:
+     2
+     a"
+     Program was successful
+     
+     Which is correct because it is a literal quotation mark at the end of the command line.
+     
+(11) echo \\\\
+
+     You will see my shell shows:
+     \\
+     Program was successful
+     
+     Which is correct because the fisrt and third backslashes are supposed to make the second and fourth backslashes literal.
+     
+(12) echo \"In Money We Trust\"
+
+     You will see my shell shows:
+     "In Money We Trust"
+     Program was successful
+     
+     Which is correct, because the shell is supposed to support escaped quotation mark.
+     
+(13) echo \a \\ \b \ \/
+
+     You will see my shell shows:
+     a \ b \ /
+     Program was successful
+     
+     Which is correct because in my shell, the backslash would make every follows it (without any backspace) become literal.
+     
+(14) echo "a
+
+     You will see my shell shows:
+     unclosed quotation mark
+     
+     Which is correct, because there is an unclosed quotation mark.
+     
+(15) echo a"
+
+     You will see my shell shows:
+     unclosed quotation mark
+     
+     Which is correct, because there is an unclosed quotation mark.
+     
+(16) echo \"a
+
+     You will see my shell gives:
+     "a
+     Program was successful
+     
+     Which is correct because it is an literal quotation mark.
+
+
+(17)      ./testprint "a   d b"  \" c "a\\b\\c d\\"
+
+     You will see my shell gives
+     5
+     a   d b
+     "
+     c
+     a\b\c d\
+
+     This is correct because my shell could skip whitepaces between arguments my shell could also use "s to include literal whitespace, my shell supports escaped quotation mark and my shell supports escaped backslashes.
+
+(18) echo ghjk ij "a  " \\"
+
+     You will see my shell gives:
+     unclosed quotation mark
+
+     This is correct because the back slash before the last quotation mark is a literal backslash(made by the first backslash), so it won't make the last quotation mark literal, which makes it unclosed.
+
+
+
+STEP 3 Directories and variables
+Run:
+(1) cd
+
+    You will see my shell just change its directory into /home/js896, which is correct, because in a real UNIX command shell, simply typing "cd" would change the directory into HOME directory.
+    
+(2) cd /home/js896/ece551
+
+    You will see my shell changes its directory to /home/js896/ece551, which is correct because this is what is expected.
+    
+(3) cd ..
+
+    You will see my shell changes its directory to /home/js896, it is correct because /home/js896 is current directory's parent directory.
+    
+(4) cd ./ece551/mp_miniproject
+
+    You will see my shell changes its directory to /home/js896/ece551/mp_miniproject, which is correct because it's what is expected.
+    
+(5) cd .
+
+    You will see my shell's current directory does not change, it is correct because we are supposed to switch to current directory.
+    
+(6) set ECE551PATH /home/js896/ece551/mp_miniproject
+
+    This set the value of variable ECE551PATH to /home/js896/ece551/mp_miniproject
+    
+(7) echo $ECE551PATH
+
+    You will see my shell shows:
+    /home/js896/ece551/mp_miniproject
+    Program was successful
+    
+    Which is correct because if $varname is on the command line, my shell should replace it with the current value of that variable.
+    
+(8) export ECE551PATH
+
+    This exports the variable ECE551PATH to the environment.
+    
+(9) ls
+
+    You will see:
+    Command ls not found
+    Program failed with code 1
+    
+    This is correct because the directory /bin is no longer under ECE551PATH.
+    
+(10) /bin/ls
+
+    You will see my shell works with this command because we gived the abosulute path of the command, we just execute it without searching directories, so it does not matter if /bin exits in ECE551PATH or not.
+    
+(11) testprint "works now"
+
+     You will see my shell shows:
+     2
+     works now
+     Program was successful
+    
+    This is correct because ECE551PATH is now /home/js896/ece551/mp_miniproject, we could find the program "testprint" under ECE551PATH.
+    
+(12) set ECE551PATH $ECE551PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+    export ECE551PATH
+    
+    THis changes the value of ECE551PATH and export it into the environment.
+
+(13) ls
+
+     You will see this works now because we added /bin back into ECE551PATH
+     
+(14) set PATH /home/js896/ece551/mp_miniproject
+     export PATH
+     
+     This changes the value of PATH and export it into the environment.
+     
+(15) ls
+
+     You will see the "ls" command works just fine
+
+     This is correct because according to what Genevieve said on Piaza, after initializing ECE551PATH with PATH at the start of my shell, changing PATH should have no effect on ECE551PATH, if the change of PATH had an effect on ECE551PATH, then command "ls" can not be excecuted correctly.
+     
+(16) set ECE551PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+
+     This sets the value of ECE551PATH to /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+
+(17) export ECE551PATH
+
+     This exports the value of ECE551PATH to the environment
+     
+(18)   testprint "does not work"
+     
+     You will see my shell gives us:
+     Can't open specified directory
+     Command testprint "does not work" not found
+     Program failed with code 1
+     
+     This is correct because directory /home/js896/ece551/mp_miniproject is not in ECE551PATH any more.
+     
+(19) set var ab
+     set var1 bc
+     echo $var1
+     
+     You will see my shell gives:
+     bc
+     Program was successful
+     
+     This is correct because we should be greedy when relacing variables with their values, which means we find the longest possible variable name after "$".
+     
+(20) rev var
+     echo $var
+     
+     You will see my shell gives us:
+     ba
+     Program was successful
+     
+     This is correct because we are supposed to reverse the string held in var with rev command.
+     
+(21) set var 1
+     set var1 2
+     echo $var+$var1=3
+
+     You will see my shell gives:
+     1+2=3
+     Program was successful
+
+     This is correct because my rule for replacing varible with their values is greedy, so $var1 would be interpreted as 2 instead of 11.
+(22) set a 9
+     set b 3
+     echo $a/$b=3
+
+     You will see my shell gives:
+     9/3=3
+     Program was successful
+
+     This is correct because for my shell $var1/$var2 is legal.
+     
+(23) set Net js
+     set ID 896
+     echo $Net$ID
+
+     You will see my shell gives:
+     js896
+     Program was successful
+
+     This is correct because for my shell $var1$var2 is legal.
+
+(24) set va*8 k
+
+     You will see my shell gives: 
+     A variable name must be a combination of letters (case sensitive), underscores, and numbers
+     Program failed with code 1
+
+     This is correct because a variable name must be a combination of letters (case sensitive), underscores, and numbers.
+     
+(25) echo $not_exist
+
+     You will see my shell gives:
+     No Matching Variable
+     $not_exist
+     Program was successful
+
+     This is correct, because I did not set any variable whose name is not_exist, but with the echo command, my shell would still prints out $not_exist any way.
+
+(26) set _now_exists_11 Hatikvah
+     echo $_now_exists_11
+
+     You will see my shell gives:
+     Hatikvah
+     Program was successful
+
+     This is correct because a variable name must be a combination of letters (case sensitive), underscores, and numbers.
+     
+(27) export $not_exist
+
+     You will see my shell gives:
+     No Matching Variable
+     Variable not found
+     Program failed with code 1
+
+     This is correct because I have not set any variable names not_exist.
+
+(28) rev not_exist
+
+     You will see my shell gives:
+     Variable not found
+     Program failed with code 1
+
+     This is correct because I have not set any variable names not_exist.
+
+(29) cd .. .
+
+     You will see my shell gives:
+     Please input exactly one argumnet
+     Program failed with code 1
+
+     This is correct because command "cd " can only takes one command line argument after it.
+
+(30) set too much arguments
+
+     You will see my shell gives:
+     Please input exactly two argument
+     Program failed with code 1
+
+     This is correct because according to my design built-in command "set" can only take exactly two arguments after it.
+
+(31) set not_enough
+
+     You will see my shell gives:
+     Please input exactly two argument
+     Program failed with code 1
+
+     This is correct because according to my design built-in command "set" can only take exactly two arguments after it.
+
+(32) export too much
+
+     You will see my shell gives:
+     Please input exactly one argument
+     Program failed with code 1
+
+     This is correct because according to my design built-in command "export" can only take exactly one argument after it.
+
+(33) export
+
+     You will see my shell gives:
+     Please input exactly one argument
+     Program failed with code 1
+
+     This is correct because according to my design built-in command "export" can only take exactly one argument after it.
+
+(34) rev more more
+
+     You will see my shell gives:
+     Please input exactly one argument
+
+     This is correct because according to my design built-in command "rev" could only take exactly one argument after it.
+
+(35) rev
+
+     You will see my shell gives:
+     Please input exactly one argument
+
+     This is correct because according to my design built-in command "rev" could only take exactly one argument after it.
+     
+
+Step 4 Redirection
+I wrote a testing program called "print" it will read one line from std::cin and print it out to std::cout.
+Run:
+(1) ls >output
+    cat output
+    
+    You will see the resut of ls is redirected into output.
+    
+(2) ls ..> output
+    cat output
+    
+    You will all files in the parent directory of current directory is listed in output.
+    
+(3) ls iop 2> error
+    cat error
+    
+    You will see:
+    /bin/ls: cannot access 'iop': No such file or directory, this is correct because stderr is redirected into error.
+    
+(4) ls /notadirectory 2>error
+    cat error
+    
+    You will see:
+    /bin/ls: cannot access '/notadirectory': No such file or directory.
+
+    Thich is correct because stderr has been redirected to error.
+    
+(5) ./print < input
+
+    You will see my shel gives:
+    ls
+    Program was successful
+    
+    This is correct because stdin is redirected to the file "input".
+    
+(6) ./print< input
+
+    You will see my shell gives:
+    ls
+    Program was successful
+    
+    This is correct because stdin is redirected to the file "input".
+ 
+(7) ls>
+    
+    You will see my shell gives:
+    Please specify redirection object
+    Program failed with code 1
+
+    This is correct because output redirection must specify a file after ">".
+
+(8) ls >
+
+    same as (7)
+
+(9) ./print <
+
+    You will see my shell gives:
+    Please specify redirection object
+    Program failed with code 1
+
+    This is correct because redirection must specify a file after "<"
+
+(10) ./print<
+
+    same as (8)
+
+(11) ./ffosh< input >output
+     cat output
+
+     You will see my shell executes commands specified in input and redirect the resut to output.
+
+     This is correct because I redirected stdin to the file input and also redirected stdout to the file output. The program "./ffosh" takes one line from stdin and prints it out to stdout.
+
+     The content of the file input is:
+     ls
+     ls ..
+     cd hjk
+    
+(12) ./ffosh < input >output >out
+     cat output
+     cat out
+     You will see the new shell execute commands in input and redirects stdout to output and out.
+
+     The content of the file input is:
+     ls
+     ls ..
+     cd hjk
+
+(13) ./ffosh < input > output >out 2> error
+   cat output
+   cat error
+
+    You will see the new shell execute commands in input and redirects stdout to output and redirects stderr infomation in error
+
+    The content of the file input is:
+    ls
+    ls ..
+    cd hjk
+
+(14) ls ... >out 2>error
+     cat error
+
+     You will see my shell gives:
+     /bin/ls: cannot access '...': No such file or directory
+
+     This is correct because I redirected stderr to error.
+     
+(15) exit
+
+   My shell exits, and you can see there is no memory leak, this is correct because it is what is required
+
